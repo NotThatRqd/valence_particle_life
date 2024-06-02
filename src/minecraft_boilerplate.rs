@@ -106,35 +106,21 @@ fn command(
         println!("{username} used /update_armor");
 
         for (entity_id, equipment_component) in &entities_query {
-            let mut equipment_list = Vec::new();
-
-            if let Some(helmet) = &equipment_component.helmet {
-                equipment_list.push(EquipmentEntry {
-                    slot: 5,
-                    item: helmet.clone(), // TODO: don't use clone
-                });
-            }
-
-            if let Some(chestplate) = &equipment_component.chestplate {
-                equipment_list.push(EquipmentEntry {
-                    slot: 4,
-                    item: chestplate.clone(), // TODO: don't use clone
-                });
-            }
-
-            if let Some(leggings) = &equipment_component.leggings {
-                equipment_list.push(EquipmentEntry {
-                    slot: 3,
-                    item: leggings.clone(), // TODO: don't use clone
-                });
-            }
-
-            if let Some(boots) = &equipment_component.boots {
-                equipment_list.push(EquipmentEntry {
-                    slot: 2,
-                    item: boots.clone(), // TODO: don't use clone
-                });
-            }
+            // Relevant document: https://wiki.vg/index.php?title=Protocol&oldid=18375#Set_Equipment
+            let equipment_list: Vec<EquipmentEntry> = [
+                (5, &equipment_component.helmet),
+                (4, &equipment_component.chestplate),
+                (3, &equipment_component.leggings),
+                (2, &equipment_component.boots),
+            ]
+            .iter()
+            .filter_map(|(slot, item)| {
+                item.as_ref().map(|item| EquipmentEntry {
+                    slot: *slot,
+                    item: item.clone(),
+                })
+            })
+            .collect();
 
             if equipment_list.is_empty() {
                 continue;
