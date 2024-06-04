@@ -11,6 +11,8 @@ use valence::protocol::packets::play::entity_equipment_update_s2c::EquipmentEntr
 use valence::protocol::packets::play::EntityEquipmentUpdateS2c;
 use valence::protocol::WritePacket;
 
+use crate::particle_life::AttractionMatrix;
+
 pub struct MinecraftBoilerplatePlugin;
 
 impl Plugin for MinecraftBoilerplatePlugin {
@@ -95,43 +97,44 @@ fn command(
     mut command_events: EventReader<CommandExecutionEvent>,
     mut clients_query: Query<(&mut Client, &Username)>,
     entities_query: Query<(&EntityId, &Equipment), With<LivingEntity>>,
+    mut matrix: ResMut<AttractionMatrix>,
 ) {
     for event in command_events.read() {
-        if event.command != "update_armor" {
-            continue;
-        }
+        if event.command == "update_armor" {
+            let (mut client, username) = clients_query.get_mut(event.executor).unwrap();
 
-        let (mut client, username) = clients_query.get_mut(event.executor).unwrap();
+            println!("{username} used /update_armor");
 
-        println!("{username} used /update_armor");
-
-        for (entity_id, equipment_component) in &entities_query {
-            // Relevant document: https://wiki.vg/index.php?title=Protocol&oldid=18375#Set_Equipment
-            let equipment_list: Vec<EquipmentEntry> = [
-                (5, &equipment_component.helmet),
-                (4, &equipment_component.chestplate),
-                (3, &equipment_component.leggings),
-                (2, &equipment_component.boots),
-            ]
-            .iter()
-            .filter_map(|(slot, item)| {
-                item.as_ref().map(|item| EquipmentEntry {
-                    slot: *slot,
-                    item: item.clone(),
+            for (entity_id, equipment_component) in &entities_query {
+                // Relevant document: https://wiki.vg/index.php?title=Protocol&oldid=18375#Set_Equipment
+                let equipment_list: Vec<EquipmentEntry> = [
+                    (5, &equipment_component.helmet),
+                    (4, &equipment_component.chestplate),
+                    (3, &equipment_component.leggings),
+                    (2, &equipment_component.boots),
+                ]
+                .iter()
+                .filter_map(|(slot, item)| {
+                    item.as_ref().map(|item| EquipmentEntry {
+                        slot: *slot,
+                        item: item.clone(),
+                    })
                 })
-            })
-            .collect();
+                .collect();
 
-            if equipment_list.is_empty() {
-                continue;
+                if equipment_list.is_empty() {
+                    continue;
+                }
+
+                let equip_p = EntityEquipmentUpdateS2c {
+                    entity_id: entity_id.get().into(),
+                    equipment: equipment_list,
+                };
+
+                client.write_packet(&equip_p);
             }
-
-            let equip_p = EntityEquipmentUpdateS2c {
-                entity_id: entity_id.get().into(),
-                equipment: equipment_list,
-            };
-
-            client.write_packet(&equip_p);
+        } else if event.command == "start" {
+            matrix.0 = [[-0.9, 0.9], [0.9, 0.0]];
         }
     }
 }
