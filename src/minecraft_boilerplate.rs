@@ -6,6 +6,7 @@ use valence::brand::SetBrand;
 use valence::command::CommandExecutionEvent;
 use valence::entity::living::LivingEntity;
 use valence::entity::EntityId;
+use valence::nbt::{compound, List};
 use valence::prelude::*;
 use valence::protocol::packets::play::entity_equipment_update_s2c::EquipmentEntry;
 use valence::protocol::packets::play::EntityEquipmentUpdateS2c;
@@ -95,13 +96,13 @@ pub struct Equipment {
 
 fn command(
     mut command_events: EventReader<CommandExecutionEvent>,
-    mut clients_query: Query<(&mut Client, &Username)>,
+    mut clients_query: Query<(&mut Client, &Username, &Properties, &mut Inventory)>,
     entities_query: Query<(&EntityId, &Equipment), With<LivingEntity>>,
     mut matrix: ResMut<AttractionMatrix>,
 ) {
     for event in command_events.read() {
         if event.command == "update_armor" {
-            let (mut client, username) = clients_query.get_mut(event.executor).unwrap();
+            let (mut client, username, _, _) = clients_query.get_mut(event.executor).unwrap();
 
             println!("{username} used /update_armor");
 
@@ -134,7 +135,45 @@ fn command(
                 client.write_packet(&equip_p);
             }
         } else if event.command == "start" {
-            matrix.0 = [[-0.9, 0.9], [0.9, 0.0]];
+            matrix.0 = [[0.8, -0.1], [0.5, 0.0]];
+        } else if event.command.starts_with("head") {
+            let target_username = event.command.split(' ').nth(1);
+            let target = if let Some(target_username) = target_username {
+                clients_query
+                    .iter()
+                    .find(|(_, username, _, _)| username.0 == target_username)
+            } else {
+                Some(clients_query.get(event.executor).unwrap())
+            };
+
+            if let Some(target) = target {
+                let properties = target.2;
+                let textures = properties.textures().unwrap();
+                let head = ItemStack::new(
+                    ItemKind::PlayerHead,
+                    1,
+                    Some(compound! {
+                        "SkullOwner" => compound! {
+                            "Id" => Uuid::default(),
+                            "Properties" => compound! {
+                                "textures" => List::Compound(vec![
+                                    compound! {
+                                        "Value" => textures.value.clone()
+                                    }
+                                ])
+                            },
+                        }
+                    }),
+                );
+                let (_, _, _, mut inventory) = clients_query.get_mut(event.executor).unwrap();
+                inventory.set_slot(36, head);
+            } else {
+                let (mut client, _, _, _) = clients_query.get_mut(event.executor).unwrap();
+                client.send_chat_message(
+                    "No player with that username found on the server".color(Color::RED),
+                );
+                continue;
+            }
         }
     }
 }
