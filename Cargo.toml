@@ -5,3 +5,4 @@ edition = "2021"
 
 [dependencies]
 valence = { git = "https://github.com/valence-rs/valence" }
+rand = "0.8.5"

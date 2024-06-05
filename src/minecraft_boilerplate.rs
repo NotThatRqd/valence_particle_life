@@ -135,7 +135,7 @@ fn command(
                 client.write_packet(&equip_p);
             }
         } else if event.command == "start" {
-            matrix.0 = [[0.8, -0.1], [0.5, 0.0]];
+            matrix.0 = [[0.8, -0.1, 0.0], [0.5, 0.0, 0.0], [0.2, 0.0, 0.0]];
         } else if event.command.starts_with("head") {
             let target_username = event.command.split(' ').nth(1);
             let target = if let Some(target_username) = target_username {

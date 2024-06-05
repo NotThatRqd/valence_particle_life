@@ -1,5 +1,9 @@
 use std::time::{Duration, Instant};
 
+use rand::{
+    distributions::{Distribution, Standard},
+    random,
+};
 use valence::{
     entity::{armor_stand::ArmorStandEntityBundle, entity::Flags},
     nbt::{compound, List},
@@ -50,24 +54,37 @@ struct Particle {
 enum ParticleColor {
     Red = 0,
     Blue,
+    Green,
 }
 
 impl ParticleColor {
     fn into_skin_value(&self) -> String {
         match self {
             Self::Red => "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvYWMxNDYwMGFjZTUwNjk1YzdjOWJjZjA5ZTQyYWZkOWY1M2M5ZTIwZGFhMTUyNGM5NWRiNDE5N2RkMzExNjQxMiJ9fX0=",
-            Self::Blue => "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNjEwZTM3NGNkYzJiYTk1YmI3MmYxYTAzNmM3N2RhMzUwOTkzNWExYWJkMjRiNjhjNmIzNTkxNjkwYjEwM2ZlZCJ9fX0="
+            Self::Blue => "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNjEwZTM3NGNkYzJiYTk1YmI3MmYxYTAzNmM3N2RhMzUwOTkzNWExYWJkMjRiNjhjNmIzNTkxNjkwYjEwM2ZlZCJ9fX0=",
+            Self::Green => "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvMzgzYTg4YjU5M2RhYjdlNjIxOGI3OWY1ZDk1YzQ0YmI3ZWExNzQyN2M4ZTZjOGNmNmJiNTFjZDJiYTZlY2UyYSJ9fX0=",
         }.to_string()
+    }
+}
+
+impl Distribution<ParticleColor> for Standard {
+    fn sample<R: rand::prelude::Rng + ?Sized>(&self, rng: &mut R) -> ParticleColor {
+        match rng.gen_range(0..3) {
+            0 => ParticleColor::Red,
+            1 => ParticleColor::Blue,
+            2 => ParticleColor::Green,
+            _ => panic!("what"),
+        }
     }
 }
 
 // TODO: make more idiomatic
 #[derive(Resource)]
-pub(crate) struct AttractionMatrix(pub(crate) [[f64; 2]; 2]);
+pub(crate) struct AttractionMatrix(pub(crate) [[f64; 3]; 3]);
 
 impl Default for AttractionMatrix {
     fn default() -> Self {
-        AttractionMatrix([[0.0, 0.0], [0.0, 0.0]])
+        AttractionMatrix([[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]])
     }
 }
 
@@ -77,13 +94,9 @@ fn setup(
 ) {
     let layer = layers_query.single();
 
-    for x in -5..=5 {
-        for z in -5..=5 {
-            let color = if x % 2 == 0 {
-                ParticleColor::Red
-            } else {
-                ParticleColor::Blue
-            };
+    for x in -10..=10 {
+        for z in -10..=10 {
+            let color: ParticleColor = random();
 
             let head = ItemStack::new(
                 ItemKind::PlayerHead,
